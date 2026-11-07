@@ -2,9 +2,22 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { lisa, fundir, F, tronco, matPintado } from './util.js';
 
 const leitor = new GLTFLoader();
+leitor.setMeshoptDecoder(MeshoptDecoder);
+// Os GLB vêm quantizados; as partes do kit precisam de números reais para receber a matriz do modelo.
+function emFloat(geo) {
+  for (const nome of ['position', 'normal', 'uv']) {
+    const a = geo.attributes[nome];
+    if (!a) continue;
+    const f = new Float32Array(a.count * a.itemSize);
+    for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) f[i * a.itemSize + k] = a.getComponent(i, k);
+    geo.setAttribute(nome, new THREE.BufferAttribute(f, a.itemSize));
+  }
+  return geo;
+}
 const carregar = (n) => leitor.loadAsync(`modelos/${n}.glb`);
 
 export async function carregarAtivos() {
@@ -18,7 +31,7 @@ export async function carregarAtivos() {
     const caixa = new THREE.Box3();
     cena.traverse((o) => {
       if (!o.isMesh) return;
-      const geo = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      const geo = emFloat(o.geometry.clone()).applyMatrix4(o.matrixWorld);
       geo.computeBoundingBox();
       caixa.union(geo.boundingBox);
       partes.push({ geo, mat: o.material });

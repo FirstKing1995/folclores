@@ -432,9 +432,9 @@ function criarLanternas(cena, matMadeira) {
 
 // ---------- Montagem ----------
 const NIVEIS = {
-  alta: { tom: 2048, capim: 900, arvores: 64, grade: 1.5, arbustos: 110, pedras: 60, seixos: 120 },
-  media: { tom: 1536, capim: 420, arvores: 38, grade: 1, arbustos: 60, pedras: 44, seixos: 70 },
-  baixa: { tom: 1024, capim: 160, arvores: 24, grade: 0.7, arbustos: 26, pedras: 26, seixos: 30 },
+  alta: { tom: 2048, capim: 700, arvores: 64, grade: 1.5, arbustos: 100, pedras: 60, seixos: 100, especies: 5, tortas: 2, flores: 4 },
+  media: { tom: 1536, capim: 300, arvores: 38, grade: 1, arbustos: 50, pedras: 40, seixos: 40, especies: 3, tortas: 1, flores: 2 },
+  baixa: { tom: 1024, capim: 110, arvores: 24, grade: 0.6, arbustos: 22, pedras: 24, seixos: 0, especies: 2, tortas: 0, flores: 1 },
 };
 
 export function criarMundo(cena, qualidade, kit) {
@@ -496,7 +496,7 @@ export function criarMundo(cena, qualidade, kit) {
     const chave = `${orig.uuid}|${forca}|${recolor}`;
     if (matsConvertidos.has(chave)) return matsConvertidos.get(chave);
     const recorte = orig.alphaTest > 0 || orig.alphaMode === 'MASK' || /Leaves|Leaf|Grass|Flowers/.test(orig.name);
-    const m = new THREE.MeshLambertMaterial({ map: orig.map, alphaTest: recorte ? 0.42 : 0, side: THREE.DoubleSide });
+    const m = new THREE.MeshLambertMaterial({ map: orig.map, alphaTest: recorte ? 0.42 : 0, side: recorte ? THREE.DoubleSide : THREE.FrontSide });
     m.name = orig.name;
     if (/Rocks/.test(orig.name)) m.color.setScalar(1.75);
     const forcaU = { value: forca };
@@ -551,16 +551,17 @@ export function criarMundo(cena, qualidade, kit) {
     copaVerde: ['#6f9f35', '#5f9431', '#82ad3b', '#578a30'], copaOliva: ['#94a03d', '#7f9338', '#a6a943'],
     copaLaranja: ['#ec8528', '#de6c22', '#f59a33'], copaAmarela: ['#eec02f', '#e0ab2a', '#f6cf42'], copaRoxa: ['#b478d4', '#9f68c6'],
   };
-  const comuns = ['CommonTree_1', 'CommonTree_2', 'CommonTree_3', 'CommonTree_4', 'CommonTree_5'];
-  const retorcidas = ['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_3', 'TwistedTree_4', 'TwistedTree_5'];
+  // árvores com folhas menos caras primeiro: os níveis mais baixos usam só o começo das listas
+  const comuns = ['CommonTree_5', 'CommonTree_3', 'CommonTree_4', 'CommonTree_2', 'CommonTree_1'].slice(0, nivel.especies);
+  const retorcidas = ['TwistedTree_2', 'TwistedTree_1'].slice(0, nivel.tortas);
   const listaCopas = [], listaPinhos = [], listaSecas = [];
   for (const a of arvores) {
     const qual = (l) => l[Math.floor(r() * l.length)];
     const base = { x: a.x, z: a.z, y: a.y, ry: a.ry };
     if (a.tipo.startsWith('copa')) {
-      const torta = r() < (qualidade === 'alta' ? 0.25 : 0.1);
+      const torta = retorcidas.length > 0 && r() < (qualidade === 'alta' ? 0.25 : 0.1);
       listaCopas.push({ ...base, nome: torta ? qual(retorcidas) : qual(comuns), altura: (torta ? 10 : 11.5) * a.s, cor: qual(CORES[a.tipo]) });
-    } else if (a.tipo === 'buriti') listaPinhos.push({ ...base, nome: qual(['Pine_1', 'Pine_2', 'Pine_3']), altura: 12 * a.s });
+    } else if (a.tipo === 'buriti') listaPinhos.push({ ...base, nome: qual(['Pine_2', 'Pine_1', 'Pine_3'].slice(0, Math.max(1, nivel.especies - 1))), altura: 12 * a.s });
     else if (a.tipo === 'mandacaru') {
       if (r() < 0.25) listaSecas.push({ ...base, nome: qual(['DeadTree_1', 'DeadTree_2']), altura: 8 * a.s });
     }
@@ -572,7 +573,7 @@ export function criarMundo(cena, qualidade, kit) {
   instancias(cena, mandacaru(), matPlanta, arvores.filter((a) => a.tipo === 'mandacaru'));
 
   // pedras
-  plantar(pedras.map((p, i) => ({ nome: ['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3'][i % 3], x: p.x, z: p.z, y: p.y - 0.15, ry: p.ry, altura: 2.2 + p.s * 2.2, largura: true })), 0);
+  plantar(pedras.map((p, i) => ({ nome: ['Rock_Medium_2', 'Rock_Medium_1', 'Rock_Medium_3'][i % Math.max(2, nivel.especies)], x: p.x, z: p.z, y: p.y - 0.15, ry: p.ry, altura: 2.2 + p.s * 2.2, largura: true })), 0);
   const seixos = [];
   for (let i = 0; i < nivel.seixos; i++) {
     const x = (r() - 0.5) * EXT_X * 1.7, z = (r() - 0.5) * EXT_Z * 1.3;
@@ -599,9 +600,9 @@ export function criarMundo(cena, qualidade, kit) {
   espalhar(nivel.capim * 0.62, ['Grass_Common_Short'], 1.5, (x, z) => mataR(2.8)(x, z) && moita(x, z, 0.3), 0.14);
   espalhar(nivel.capim * 0.38, ['Grass_Wispy_Short'], 1.5, (x, z) => sertaoR(2.8)(x, z) && moita(x, z, 0.3), 0.16);
   espalhar(nivel.arbustos * 0.62, ['Bush_Common', 'Bush_Common_Flowers'], 3.2, longeDoCaminho(4.2), 0.06, 8, (x) => (ladoSertao(x) > 0.5 ? ['#a8a240', '#c08a35', '#8f9a3c'] : ['#5f9431', '#6f9f35', '#4f8530'])[Math.floor(r() * 3)]);
-  espalhar(nivel.arbustos * 0.5, ['Fern_1', 'Plant_1_Big', 'Plant_7_Big'], 2.6, mataR(3.6), 0.09);
-  espalhar(nivel.arbustos * 0.46, ['Flower_3_Group', 'Flower_4_Group', 'Clover_1', 'Clover_2'], 1.5, longeDoCaminho(3.2), 0.05);
-  espalhar(nivel.arbustos * 0.16, ['Mushroom_Common'], 1, mataR(3.4), 0);
+  espalhar(nivel.arbustos * 0.5, ['Plant_7_Big', 'Fern_1', 'Plant_1_Big'].slice(0, nivel.especies), 2.6, mataR(3.6), 0.09);
+  espalhar(nivel.arbustos * 0.46, ['Flower_3_Group', 'Clover_1', 'Flower_4_Group', 'Clover_2'].slice(0, nivel.flores), 1.5, longeDoCaminho(3.2), 0.05);
+  if (nivel.especies > 2) espalhar(nivel.arbustos * 0.16, ['Mushroom_Common'], 1, mataR(3.4), 0);
   // vitórias-régias
   const folha = fundir([
     lisa(new THREE.CylinderGeometry(1, 0.97, 0.07, 18), '#5fa24e', { base: '#3f7d43', var: 0.2 }),
