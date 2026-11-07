@@ -1,7 +1,7 @@
 // A partida inteira, sem desenho: com a mesma semente e os mesmos comandos, o resultado é idêntico.
 // O estado é um objeto simples de inteiros, textos e listas: dá para copiar por JSON e continuar dali.
 import { U, un, seg, divi, isqrt, dist2, vetor, sorteioAte } from './fixo.js';
-import { BASES, FONTES, RAIO_FONTE, ROTAS, NOMES_ROTA, TORRES, livre, caminho } from './mapa.js';
+import { BASES, FONTES, RAIO_FONTE, ROTAS, NOMES_ROTA, TORRES, MEIO_MAPA, livre, caminho } from './mapa.js';
 import { decidirBot } from './bots.js';
 
 // ---------- Números do jogo ----------
@@ -144,19 +144,23 @@ function morrer(e, a, fonte) {
 
 // ---------- Comandos ----------
 const ehInt = Number.isInteger;
+const LIMITE_COORD = un(MEIO_MAPA);
+const noLimite = (v) => ehInt(v) && Math.abs(v) <= LIMITE_COORD * 2;
 function aplicar(e, c) {
   const h = heroiDe(e, c.j);
   if (!h || h.morto || e.fim) return;
   switch (c.c) {
-    case 'dir': // joystick ou teclas: vetor de até 1000
-      if (!ehInt(c.x) || !ehInt(c.z)) return;
-      h.dx = Math.max(-U, Math.min(U, c.x)); h.dz = Math.max(-U, Math.min(U, c.z));
+    case 'dir': { // joystick ou teclas; o comprimento nunca passa de 1, para ninguém correr mais
+      if (!noLimite(c.x) || !noLimite(c.z)) return;
+      const [dx, dz] = c.x * c.x + c.z * c.z > U * U ? vetor(c.x, c.z) : [c.x, c.z];
+      h.dx = dx; h.dz = dz;
       if (h.dx || h.dz) { h.cam = []; h.alvo = 0; }
       break;
+    }
     case 'ir':
-      if (!ehInt(c.x) || !ehInt(c.z)) return;
+      if (!noLimite(c.x) || !noLimite(c.z)) return;
       h.dx = 0; h.dz = 0; h.alvo = 0;
-      h.cam = caminho(h.x, h.z, c.x, c.z);
+      h.cam = caminho(h.x, h.z, Math.max(-LIMITE_COORD, Math.min(LIMITE_COORD, c.x)), Math.max(-LIMITE_COORD, Math.min(LIMITE_COORD, c.z)));
       break;
     case 'alvo':
       if (!ehInt(c.id)) return;
@@ -195,7 +199,7 @@ function golpe(e, h, alvoFixo = null) {
 }
 
 function direcaoHab(e, h, x, z) {
-  if (ehInt(x) && ehInt(z) && (x !== 0 || z !== 0)) return vetor(x, z);
+  if (noLimite(x) && noLimite(z) && (x !== 0 || z !== 0)) return vetor(x, z);
   const a = maisProximo(e, h, un(11));
   if (a) return vetor(a.x - h.x, a.z - h.z);
   return h.fx || h.fz ? [h.fx, h.fz] : [U, 0];

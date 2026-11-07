@@ -48,6 +48,24 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 #girar { position: fixed; left: 50%; top: calc(84px + var(--seguro-t)); transform: translateX(-50%); display: none; width: max-content; max-width: 86vw; padding: 7px 12px; font-size: 13px; background: rgba(32, 27, 21, .85); border-radius: 8px; pointer-events: none; }
 #girar.ver { display: block; }
 
+/* Placar e minimapa */
+#placar { position: fixed; left: 50%; top: calc(10px + var(--seguro-t)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 4px 12px; background: rgba(32, 27, 21, .82); border: 1px solid #7a6545; border-radius: 8px; pointer-events: none; font-variant-numeric: tabular-nums; }
+#placar b { min-width: 22px; text-align: center; font-size: 18px; line-height: 24px; }
+#placar .mata { color: #8dee9f; }
+#placar .sertao { color: #ff9b6e; }
+#relogio { font-size: 13px; font-weight: 700; color: var(--osso); }
+#mini { position: fixed; right: calc(12px + var(--seguro-d)); top: calc(56px + var(--seguro-t)); width: 150px; height: 150px; border: 2px solid #a48a5e; border-radius: 8px; background: #3f5a2e; box-shadow: 0 3px 10px rgba(0,0,0,.45); cursor: pointer; touch-action: none; }
+@media (max-width: 900px), (max-height: 480px) { #mini { width: 104px; height: 104px; } }
+#perf { top: auto; bottom: calc(10px + var(--seguro-b)); right: auto; left: calc(12px + var(--seguro-e)); }
+
+/* Fim de partida */
+#fim { position: fixed; inset: 0; display: none; place-items: center; padding: 20px; text-align: center; background: radial-gradient(ellipse at 50% 40%, rgba(26, 92, 60, .82), rgba(6, 24, 20, .96) 72%); }
+#fim.ver { display: grid; animation: surgir .5s ease-out; }
+#fim.derrota { background: radial-gradient(ellipse at 50% 40%, rgba(110, 42, 16, .82), rgba(26, 10, 6, .96) 72%); }
+@keyframes surgir { from { opacity: 0; } to { opacity: 1; } }
+#jogarDeNovo { margin-top: 24px; min-width: 190px; min-height: 52px; padding: 0 28px; font-family: inherit; font-size: 17px; font-weight: 800; color: #2a1608; background: linear-gradient(#ffdf70, #e98d22); border: 0; border-radius: 10px; box-shadow: 0 4px 0 #8f3d12, 0 10px 20px rgba(0,0,0,.4); cursor: pointer; }
+#jogarDeNovo:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+
 /* Joystick */
 #joy { position: fixed; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none; }
 #joy.ver { display: block; }

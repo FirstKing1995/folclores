@@ -128,7 +128,7 @@ function girarNoCorpo(osso, eixo, ang, ref) {
 }
 
 // ---------- Saci ----------
-export function criarSaciFinal(ativos) {
+export function criarSaciFinal(ativos, lado = 'mata') {
   const { raizModelo, mats, clarao, osso } = montar(ativos.saci, { sombra: true });
   const raiz = new THREE.Group(), corpo = new THREE.Group();
   raiz.add(corpo);
@@ -138,7 +138,9 @@ export function criarSaciFinal(ativos) {
   // o gorro, tingido com a mesma família do calção
   const pintado = matPintado();
   pintado.emissive = clarao;
-  const verm = '#d3271c', esc = '#7c1311', claro = '#f0482c', ouro = '#e0b34a';
+  // gorro vermelho para a Mata e gorro de brasa para o Sertão: identifica o time de longe
+  const sertao = lado === 'sertao';
+  const verm = sertao ? '#e88a1e' : '#d3271c', esc = sertao ? '#8c4a10' : '#7c1311', claro = sertao ? '#ffc04a' : '#f0482c', ouro = '#e0b34a';
   const gorro = new THREE.Mesh(fundir([
     lisa(tronco(0.1, 0.122, 0.09, 14), verm, { base: esc, topo: claro, p: [0, 0.025, -0.008] }),
     lisa(tronco(0.07, 0.1, 0.09, 12), verm, { topo: claro, p: [-0.006, 0.098, -0.03], r: [-0.42, 0, 0.14] }),

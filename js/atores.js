@@ -128,4 +128,33 @@ export function criarGuardiao(lado) {
   return { raiz, mat, atualizar, altura: 8.2, matGlow };
 }
 
+// A base: pedestal de pedra com um coração brilhante aos pés da árvore ancestral (a árvore vem do cenário).
+export function criarBaseVis(lado) {
+  const c = PALETA[lado];
+  const raiz = new THREE.Group();
+  const mat = matPintado({}, true);
+  const pecas = [lisa(tronco(5.6, 6.5, 1.2, 18), c.p, { base: c.pE, topo: c.pT, p: [0, 0.5, 0], var: 0.1 })];
+  for (let i = 0; i < 8; i++) {
+    const a = i * 0.785;
+    pecas.push(lisa(F.caixa, c.p2, { base: c.pE, topo: c.pT, p: [Math.cos(a) * 5.4, 1.9, Math.sin(a) * 5.4], r: [0, -a, 0], s: [0.9, 2.2, 0.9] }));
+    pecas.push(lisa(F.caixa, c.ouro, { base: c.ouroE, p: [Math.cos(a) * 5.4, 3.1, Math.sin(a) * 5.4], r: [0, -a, 0], s: [1.1, 0.24, 1.1] }));
+  }
+  raiz.add(mesh(fundir(pecas), mat));
+  const matGlow = new THREE.MeshBasicMaterial({ vertexColors: true });
+  const nucleo = mesh(fundir([lisa(gema, c.marca, { p: [0, 7.5, 0], s: [1.1, 1.8, 1.1], var: 0 })]), matGlow, false);
+  raiz.add(nucleo);
+  const runas = [];
+  for (let i = 0; i < 8; i++) {
+    const a = i * 0.785;
+    runas.push(lisa(gema, c.marca, { p: [Math.cos(a) * 5.4, 2.1, Math.sin(a) * 5.4], s: [0.5, 0.7, 0.5], var: 0 }));
+  }
+  raiz.add(mesh(fundir(runas), matGlow, false));
+  const atualizar = (a, dt) => {
+    a.fase += dt;
+    nucleo.rotation.y += dt * 0.9;
+    nucleo.position.y = Math.sin(a.fase * 1.6) * 0.3;
+  };
+  return { raiz, mat, atualizar, altura: 11 };
+}
+
 export const geoRocha = fundir([lisa(new THREE.SphereGeometry(1, 9, 6), '#d6d2c0', { base: '#7c7e72', bossa: 0.45, semente: 90, s: 0.58 })]);
