@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Folclores · Laboratório de estilo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a3f5c">
+  <link rel="stylesheet" href="css/lab.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }</script>
+</head>
+<body>
+  <canvas id="tela"></canvas>
+  <div id="vinheta"></div>
+  <div id="clarao"></div>
+  <div id="camada"></div>
+  <div id="zona"></div>
+
+  <div id="joy"><div id="pino"></div></div>
+
+  <header id="heroiHud">
+    <div class="retrato" aria-hidden="true">
+      <svg viewBox="0 0 48 48"><path d="M10 27c0-10 7-17 16-17 4 0 9 4 12 10-3-1-5-1-7 0 2 2 3 4 3 7H10Z" fill="#e0271d"/><path d="M12 27h24c0 8-5 13-12 13s-12-5-12-13Z" fill="#94603a"/><circle cx="19" cy="31" r="2" fill="#fff7e8"/><circle cx="29" cy="31" r="2" fill="#fff7e8"/></svg>
+    </div>
+    <div class="dados">
+      <strong>Saci</strong>
+      <div class="vida"><i id="vidaBarra"></i><b id="vidaTxt">620 / 620</b></div>
+    </div>
+  </header>
+
+  <nav id="opcoes">
+    <button id="btnModo" type="button"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span>Anoitecer</span></button>
+    <button id="btnQual" type="button"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Qualidade</span></button>
+    <button id="btnPainel" type="button" aria-label="Mostrar desempenho"><svg viewBox="0 0 24 24"><path d="M3 20h18M7 20v-6M12 20V6M17 20v-9"/></svg></button>
+  </nav>
+  <div id="perf">medindo</div>
+  <div id="aviso" role="status"></div>
+  <div id="girar">Gire o celular para jogar melhor</div>
+
+  <section id="acoes" aria-label="Ações do herói">
+    <button id="btnE" class="hab" type="button" aria-label="Especial: Ventania">
+      <svg viewBox="0 0 24 24"><path d="M21 4H3M18 8H6M19 12H9M16 16h-6M11 20H9"/></svg>
+      <em>E</em><span class="tempo"></span>
+    </button>
+    <button id="btnW" class="hab" type="button" aria-label="Travessura">
+      <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3Z"/></svg>
+      <em>W</em><span class="tempo"></span>
+    </button>
+    <button id="btnQ" class="hab" type="button" aria-label="Redemoinho: arraste para mirar">
+      <svg viewBox="0 0 24 24"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2M9.6 4.6A2 2 0 1 1 11 8H2M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>
+      <em>Q</em><span class="tempo"></span>
+    </button>
+    <button id="btnA" type="button" aria-label="Atacar">
+      <svg viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg>
+    </button>
+  </section>
+
+  <div id="carregando">
+    <div class="caixa">
+      <p class="sobre">Laboratório de estilo</p>
+      <h1>FOLCLORES</h1>
+      <p class="linha">Mata contra Sertão. Um trecho de mapa para sentir o visual e os controles.</p>
+      <button id="entrar" type="button"><span class="espera">Pintando o mapa</span><span class="pronto">Entrar</span></button>
+      <p class="ajuda toque">Joystick à esquerda. Arraste o botão do redemoinho para mirar.</p>
+      <p class="ajuda pc">Clique para andar ou use as setas. A ou espaço ataca. Q, W e E usam as habilidades.</p>
+    </div>
+  </div>
+
+  <noscript>O Folclores precisa de JavaScript e WebGL.</noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+// Carrega os modelos CC0 e monta o kit de natureza e os personagens animados.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
+import { lisa, fundir, F, tronco, matPintado } from './util.js';
+
+const leitor = new GLTFLoader();
+const carregar = (n) => leitor.loadAsync(`modelos/${n}.glb`);
+
+export async function carregarAtivos() {
+  const [natureza, saci, tropaM, tropaF, anim] = await Promise.all(['natureza', 'saci_corpo', 'tropa_m', 'tropa_f', 'animacoes'].map(carregar));
+
+  // natureza: cada cena vira uma lista de partes já na posição do modelo
+  const kit = {};
+  for (const cena of natureza.scenes) {
+    cena.updateMatrixWorld(true);
+    const partes = [];
+    const caixa = new THREE.Box3();
+    cena.traverse((o) => {
+      if (!o.isMesh) return;
+      const geo = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      geo.computeBoundingBox();
+      caixa.union(geo.boundingBox);
+      partes.push({ geo, mat: o.material });
+    });
+    kit[cena.name] = { partes, altura: Math.max(0.01, caixa.max.y - caixa.min.y), raio: Math.max(caixa.max.x - caixa.min.x, caixa.max.z - caixa.min.z) / 2 };
+  }
+
+  // animações: sem deslocamento de ossos, para servirem em qualquer proporção de corpo
+  const clipes = {};
+  for (const c of anim.animations) {
+    const k = c.clone();
+    k.tracks = k.tracks.filter((t) => !t.name.endsWith('.scale') && (!t.name.endsWith('.position') || t.name.startsWith('pelvis')));
+    clipes[c.name] = k;
+  }
+  return { kit, clipes, saci, tropaM, tropaF };
+}
+
+// Copia o personagem trocando o material por um mais leve e dividindo a cor do clarão de dano.
+function montar(gltf, opc = {}) {
+  const raizModelo = clonarEsqueleto(gltf.scene);
+  const mats = [];
+  const clarao = new THREE.Color(0, 0, 0);
+  raizModelo.traverse((o) => {
+    if (!o.isMesh) return;
+    const nomeMat = o.material.name;
+    const m = new THREE.MeshLambertMaterial({ map: o.material.map, alphaTest: o.material.alphaTest || 0, transparent: false, side: o.material.side });
+    m.name = nomeMat;
+    m.emissive = clarao;
+    if (opc.tinta && /Ranger/.test(nomeMat)) m.color.set(opc.tinta);
+    m.onBeforeCompile = (s) => {
+      s.fragmentShader = s.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += diffuseColor.rgb * .26;
+        totalEmissiveRadiance += vec3(1.,.88,.68) * pow(1. - abs(normalize(vNormal).z), 3.) * .06;`);
+    };
+    m.customProgramCacheKey = () => 'personagem';
+    o.material = m;
+    o.castShadow = !!opc.sombra;
+    o.frustumCulled = false;
+    mats.push(m);
+  });
+  const osso = {};
+  raizModelo.traverse((o) => { if (o.isBone) osso[o.name] = o; });
+  return { raizModelo, mats, clarao, osso };
+}
+
+function controlador(raiz, clipes) {
+  const mixer = new THREE.AnimationMixer(raiz);
+  const acoes = {};
+  let atual = null;
+  const tocar = (nome, { uma = false, veloc = 1, fade = 0.14 } = {}) => {
+    const c = clipes[nome];
+    if (!c) return;
+    const a = acoes[nome] ?? (acoes[nome] = mixer.clipAction(c));
+    if (uma) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.reset(); }
+    a.timeScale = veloc;
+    if (atual === a && !uma) return;
+    a.enabled = true;
+    if (!uma) a.reset();
+    a.setEffectiveWeight(1);
+    a.play();
+    if (atual && atual !== a) a.crossFadeFrom(atual, fade, false);
+    atual = a;
+  };
+  return { mixer, tocar };
+}
+
+// Anexa um objeto a um osso mantendo os eixos do mundo na pose de repouso.
+function presoAoOsso(osso, raiz, objeto, local = [0, 0, 0]) {
+  raiz.updateMatrixWorld(true);
+  const q = new THREE.Quaternion(), e = new THREE.Vector3();
+  osso.getWorldQuaternion(q);
+  osso.getWorldScale(e);
+  const g = new THREE.Group();
+  g.quaternion.copy(q).invert();
+  const f = raiz.scale.x; // o objeto usa as medidas do modelo, em metros
+  g.scale.set(f / e.x, f / e.y, f / e.z);
+  objeto.position.set(...local);
+  g.add(objeto);
+  osso.add(g);
+  return g;
+}
+
+// ---------- Saci ----------
+export function criarSaciFinal(ativos) {
+  const { raizModelo, mats, clarao, osso } = montar(ativos.saci, { sombra: true });
+  const raiz = new THREE.Group(), corpo = new THREE.Group();
+  raiz.add(corpo);
+  corpo.add(raizModelo);
+  raizModelo.scale.setScalar(2.05);
+
+  // o gorro, tingido com a mesma família do calção
+  const pintado = matPintado();
+  pintado.emissive = clarao;
+  const verm = '#d3271c', esc = '#7c1311', claro = '#f0482c', ouro = '#e0b34a';
+  const gorro = new THREE.Mesh(fundir([
+    lisa(tronco(0.1, 0.122, 0.09, 14), verm, { base: esc, topo: claro, p: [0, 0.025, -0.008] }),
+    lisa(tronco(0.066, 0.1, 0.11, 12), verm, { topo: claro, p: [-0.008, 0.115, -0.03], r: [-0.3, 0, 0.18] }),
+    lisa(tronco(0.035, 0.066, 0.11, 10), verm, { p: [-0.035, 0.195, -0.08], r: [-0.8, 0, 0.45] }),
+    lisa(F.cone, claro, { base: verm, p: [-0.075, 0.215, -0.15], r: [-1.5, 0, 0.9], s: [0.034, 0.13, 0.034] }),
+    lisa(new THREE.TorusGeometry(0.114, 0.015, 7, 18), ouro, { base: '#8f6d24', p: [0, -0.012, -0.004], r: [1.5, 0, 0] }),
+  ]), pintado);
+  gorro.castShadow = true;
+  presoAoOsso(osso.Head, raizModelo, gorro, [0, 0.17, 0.005]);
+  mats.push(pintado);
+
+  // perna única: a esquerda encolhe até virar um coto dentro do calção
+  if (osso.thigh_l) osso.thigh_l.scale.setScalar(0.5);
+  if (osso.calf_l) osso.calf_l.scale.setScalar(0.02);
+  // o cabelo some sob o gorro
+  raizModelo.traverse((o) => { if (o.isMesh && /Hair/.test(o.material.name)) o.visible = false; });
+
+  const { mixer, tocar } = controlador(raizModelo, ativos.clipes);
+  tocar('Idle_Loop');
+  const atualizar = (a, dt) => {
+    a.fase += dt * (a.andando ? 10.5 : 2.6);
+    const pulo = Math.abs(Math.sin(a.fase));
+    if (a.atkT > 0) {
+      if (!a.batendo) { a.batendo = true; a.lado2 = !a.lado2; tocar(a.lado2 ? 'Punch_Cross' : 'Punch_Jab', { uma: true, veloc: 2.2, fade: 0.06 }); }
+    } else {
+      a.batendo = false;
+      if (a.girando > 0) tocar('Roll', { veloc: 1.5, fade: 0.05 });
+      else if (a.andando) tocar('Jump_Loop', { fade: 0.12 });
+      else tocar('Idle_Loop', { fade: 0.2 });
+    }
+    if (a.girando > 0) { corpo.rotation.y += dt * 26; corpo.position.y = 0.3; corpo.rotation.x = 0; }
+    else {
+      corpo.rotation.y *= Math.max(0, 1 - dt * 14);
+      corpo.position.y = a.andando ? pulo * 0.6 : 0;
+      corpo.rotation.x = a.andando ? 0.14 : corpo.rotation.x * 0.8;
+      const ag = a.andando ? 1 - pulo : 0;
+      corpo.scale.set(1 + ag * 0.05, 1 - ag * 0.07, 1 + ag * 0.05);
+    }
+    mixer.update(dt);
+    // o mixer não mexe em escala: reforça só a perna escondida quando o clipe muda de pose
+    if (osso.thigh_l) { osso.thigh_l.rotation.z *= 0.2; }
+  };
+  return { raiz, mat: { emissive: clarao, dispose() {} }, atualizar, altura: 4.5, mats };
+}
+
+// ---------- Tropas ----------
+// sombra barata das tropas: um disco escuro, sem passar pelo mapa de sombras
+const geoManchinha = new THREE.CircleGeometry(0.85, 16).rotateX(-Math.PI / 2).translate(0, 0.05, 0);
+const matManchinha = new THREE.MeshBasicMaterial({ color: '#16261c', transparent: true, opacity: 0.32, depthWrite: false });
+const TINTA = { mata: '#b8e096', sertao: '#ffb27a' };
+export function criarTropaFinal(ativos, lado) {
+  const fogo = lado === 'sertao';
+  const { raizModelo, clarao, mats, osso } = montar(fogo ? ativos.tropaM : ativos.tropaF, { tinta: TINTA[lado] });
+  const raiz = new THREE.Group();
+  raiz.add(raizModelo);
+  raizModelo.scale.setScalar(1.42);
+  raiz.add(new THREE.Mesh(geoManchinha, matManchinha));
+  const cor1 = fogo ? '#ffb040' : '#7dffb0', cor2 = fogo ? '#ffe58e' : '#d8ffe6', cor0 = fogo ? '#ff7a1a' : '#2fbf72';
+  const lamina = new THREE.Mesh(fundir([
+    lisa(F.caixa, cor1, { base: cor0, topo: cor2, p: [0, 0.36, 0], s: [0.06, 0.68, 0.02], var: 0.05 }),
+    lisa(F.caixa, '#a77422', { p: [0, 0.01, 0], s: [0.17, 0.03, 0.05] }),
+  ]), new THREE.MeshBasicMaterial({ vertexColors: true }));
+  if (osso.hand_r) presoAoOsso(osso.hand_r, raizModelo, lamina, [0.02, -0.02, 0.03]);
+  const { mixer, tocar } = controlador(raizModelo, ativos.clipes);
+  tocar('Sword_Idle');
+  mixer.update(Math.random());
+  const atualizar = (a, dt) => {
+    if (a.atkT > 0) {
+      if (!a.batendo) { a.batendo = true; tocar('Sword_Attack', { uma: true, veloc: 1.6, fade: 0.08 }); }
+    } else {
+      a.batendo = false;
+      if (a.atordoado > 0) tocar('Hit_Chest', { fade: 0.08 });
+      else if (a.andando) tocar('Jog_Fwd_Loop', { veloc: 0.85 });
+      else tocar('Sword_Idle', { fade: 0.2 });
+    }
+    mixer.update(dt);
+  };
+  return { raiz, mat: { emissive: clarao, dispose() { for (const m of mats) m.dispose(); } }, atualizar, altura: 3 };
+}
