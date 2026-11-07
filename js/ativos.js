@@ -101,6 +101,19 @@ function presoAoOsso(osso, raiz, objeto, local = [0, 0, 0]) {
   return g;
 }
 
+// Gira um osso num eixo do personagem (X direita, Z frente), sem depender dos eixos locais do esqueleto.
+const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+const _qPai = new THREE.Quaternion(), _qInv = new THREE.Quaternion(), _qRef = new THREE.Quaternion(), _qDelta = new THREE.Quaternion(), _eixo = new THREE.Vector3();
+function girarNoCorpo(osso, eixo, ang, ref) {
+  if (!osso) return;
+  ref.getWorldQuaternion(_qRef);
+  osso.parent.getWorldQuaternion(_qPai);
+  _eixo.copy(eixo).applyQuaternion(_qRef);
+  _qDelta.setFromAxisAngle(_eixo, ang);
+  _qInv.copy(_qPai).invert();
+  osso.quaternion.premultiply(_qDelta.premultiply(_qInv).multiply(_qPai));
+}
+
 // ---------- Saci ----------
 export function criarSaciFinal(ativos) {
   const { raizModelo, mats, clarao, osso } = montar(ativos.saci, { sombra: true });
@@ -115,45 +128,68 @@ export function criarSaciFinal(ativos) {
   const verm = '#d3271c', esc = '#7c1311', claro = '#f0482c', ouro = '#e0b34a';
   const gorro = new THREE.Mesh(fundir([
     lisa(tronco(0.1, 0.122, 0.09, 14), verm, { base: esc, topo: claro, p: [0, 0.025, -0.008] }),
-    lisa(tronco(0.066, 0.1, 0.11, 12), verm, { topo: claro, p: [-0.008, 0.115, -0.03], r: [-0.3, 0, 0.18] }),
-    lisa(tronco(0.035, 0.066, 0.11, 10), verm, { p: [-0.035, 0.195, -0.08], r: [-0.8, 0, 0.45] }),
-    lisa(F.cone, claro, { base: verm, p: [-0.075, 0.215, -0.15], r: [-1.5, 0, 0.9], s: [0.034, 0.13, 0.034] }),
+    lisa(tronco(0.07, 0.1, 0.09, 12), verm, { topo: claro, p: [-0.006, 0.098, -0.03], r: [-0.42, 0, 0.14] }),
+    lisa(tronco(0.04, 0.07, 0.1, 10), verm, { p: [-0.024, 0.145, -0.1], r: [-1.25, 0, 0.3] }),
+    lisa(F.cone, claro, { base: verm, p: [-0.04, 0.125, -0.19], r: [-2.15, 0, 0.4], s: [0.04, 0.13, 0.04] }),
     lisa(new THREE.TorusGeometry(0.114, 0.015, 7, 18), ouro, { base: '#8f6d24', p: [0, -0.012, -0.004], r: [1.5, 0, 0] }),
   ]), pintado);
   gorro.castShadow = true;
   presoAoOsso(osso.Head, raizModelo, gorro, [0, 0.17, 0.005]);
   mats.push(pintado);
 
-  // perna única: a esquerda encolhe até virar um coto dentro do calção
-  if (osso.thigh_l) osso.thigh_l.scale.setScalar(0.5);
-  if (osso.calf_l) osso.calf_l.scale.setScalar(0.02);
-  // o cabelo some sob o gorro
-  raizModelo.traverse((o) => { if (o.isMesh && /Hair/.test(o.material.name)) o.visible = false; });
+  // Perna única: a esquerda encurta só no comprimento e fica toda dentro do calção.
+  if (osso.thigh_l && osso.calf_l) {
+    const p = osso.calf_l.position;
+    const m = [Math.abs(p.x), Math.abs(p.y), Math.abs(p.z)];
+    const eixo = m.indexOf(Math.max(...m));
+    osso.thigh_l.scale.setComponent(eixo, 0.28);
+    osso.calf_l.scale.setScalar(0.02);
+  }
 
   const { mixer, tocar } = controlador(raizModelo, ativos.clipes);
   tocar('Idle_Loop');
+  // Traz o único pé para baixo do centro do corpo.
+  raiz.updateMatrixWorld(true);
+  raizModelo.position.x = -new THREE.Vector3().setFromMatrixPosition(osso.foot_r.matrixWorld).x;
+  // Salto em uma perna, por cima da pose de repouso: agacha no chão, estica ao subir.
+  let peso = 0; // 0 parado, 1 saltando: suaviza a entrada e a saída do salto
+  const agir = (o, eixo, ang) => girarNoCorpo(o, eixo, ang, corpo);
   const atualizar = (a, dt) => {
     a.fase += dt * (a.andando ? 10.5 : 2.6);
     const pulo = Math.abs(Math.sin(a.fase));
-    if (a.atkT > 0) {
+    const atacando = a.atkT > 0;
+    if (atacando) {
       if (!a.batendo) { a.batendo = true; a.lado2 = !a.lado2; tocar(a.lado2 ? 'Punch_Cross' : 'Punch_Jab', { uma: true, veloc: 2.2, fade: 0.06 }); }
     } else {
       a.batendo = false;
       if (a.girando > 0) tocar('Roll', { veloc: 1.5, fade: 0.05 });
-      else if (a.andando) tocar('Jump_Loop', { fade: 0.12 });
       else tocar('Idle_Loop', { fade: 0.2 });
     }
-    if (a.girando > 0) { corpo.rotation.y += dt * 26; corpo.position.y = 0.3; corpo.rotation.x = 0; }
+    const alvoPeso = a.andando && !atacando && !(a.girando > 0) ? 1 : 0;
+    peso += (alvoPeso - peso) * Math.min(1, dt * 12);
+    const agacha = (1 - pulo) * (1 - pulo) * peso; // 1 no contato com o chão
+    if (a.girando > 0) { corpo.rotation.y += dt * 26; corpo.position.y = 0.3; corpo.rotation.x = 0; corpo.scale.setScalar(1); }
     else {
       corpo.rotation.y *= Math.max(0, 1 - dt * 14);
-      corpo.position.y = a.andando ? pulo * 0.6 : 0;
-      corpo.rotation.x = a.andando ? 0.14 : corpo.rotation.x * 0.8;
-      const ag = a.andando ? 1 - pulo : 0;
-      corpo.scale.set(1 + ag * 0.05, 1 - ag * 0.07, 1 + ag * 0.05);
+      corpo.position.y = pulo * 0.62 * peso - agacha * 0.3;
+      corpo.rotation.x += (0.12 * peso - corpo.rotation.x) * Math.min(1, dt * 12);
+      corpo.scale.set(1 + agacha * 0.04, 1 + (pulo - 0.5) * 0.05 * peso, 1 + agacha * 0.04);
     }
     mixer.update(dt);
-    // o mixer não mexe em escala: reforça só a perna escondida quando o clipe muda de pose
-    if (osso.thigh_l) { osso.thigh_l.rotation.z *= 0.2; }
+    if (peso > 0.01) {
+      // joelho dobra no chão e estica no ar; o pé compensa para pousar plano
+      const coxa = -(0.34 + agacha * 0.72) * peso;
+      const canela = (0.16 + agacha * 1.35) * peso;
+      agir(osso.thigh_r, X, coxa);
+      agir(osso.calf_r, X, canela);
+      agir(osso.foot_r, X, -(canela + coxa) * 0.8 - pulo * 0.35 * peso);
+      // braços abrem para equilibrar e sobem com o impulso
+      const abre = (0.5 + pulo * 0.5) * peso, vai = (pulo - 0.5) * 0.7 * peso;
+      agir(osso.upperarm_l, Z, abre);
+      agir(osso.upperarm_r, Z, -abre);
+      agir(osso.upperarm_l, X, -vai);
+      agir(osso.upperarm_r, X, -vai);
+    }
   };
   return { raiz, mat: { emissive: clarao, dispose() {} }, atualizar, altura: 4.5, mats };
 }

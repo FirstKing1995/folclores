@@ -125,7 +125,7 @@ export function matPintado(extra = {}, rocha = false) {
         float pincel = nP(vPintura * vec3(5.,11.,5.)) * .6 + nP(vPintura * vec3(13.,5.,13.)) * .4;
         diffuseColor.rgb *= .76 + pincel * .48;${rocha ? `
         float fenda = abs(nP(vPintura * 1.7 + 3.) - .5) + abs(nP(vPintura * 4.3) - .5) * .35;
-        diffuseColor.rgb *= mix(.42, 1., smoothstep(.015, .07, fenda));
+        diffuseColor.rgb *= mix(.62, 1., smoothstep(.015, .07, fenda));
         diffuseColor.rgb *= .88 + nP(vPintura * 26.) * .26;` : ''}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         float contorno = pow(1. - abs(normalize(vNormal).z), 2.6);

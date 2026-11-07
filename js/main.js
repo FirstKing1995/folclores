@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { clamp, lerp } from './util.js';
 import { criarMundo, alturaChao, andavel, caminhoZ, GUARDIOES, TOCHAS } from './mundo.js';
-import { criarGuardiao, geoRocha, usarRocha } from './atores.js';
+import { criarGuardiao, geoRocha } from './atores.js';
 import { Efeitos } from './efeitos.js';
 import { carregarAtivos, criarSaciFinal, criarTropaFinal } from './ativos.js';
 
@@ -87,7 +87,6 @@ function novoAtor(tipo, lado, x, z, vis, cfg) {
 }
 
 const inicio = [-22, caminhoZ(-22)];
-usarRocha(ativos.kit.Rock_Medium_1.partes[0]);
 const visSaci = criarSaciFinal(ativos);
 const heroi = novoAtor('heroi', 'mata', inicio[0], inicio[1], visSaci, { vida: 620, vel: 8.2, raio: 0.65, lgBarra: 2.1, altBarra: 0.24, atkDur: 0.26 });
 const gMata = novoAtor('guardiao', 'mata', GUARDIOES.mata[0], GUARDIOES.mata[1], criarGuardiao('mata'), { vida: 1800, raio: 2.5, lgBarra: 4.2, altBarra: 0.3, atkDur: 1.1 });
